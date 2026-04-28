@@ -1,1 +1,1293 @@
 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Command · Portal Comercial</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --navy:#0d1b2a;--navy2:#1b2a3b;--blue:#1e6fdc;--blue-lt:#3d8ef0;
+  --cyan:#00d4ff;--green:#00e676;--amber:#ffab40;--red:#ff5252;
+  --purple:#ce93d8;--bg:#0a1220;--card:#111d2e;--border:rgba(255,255,255,0.07);
+  --text:#e2e8f0;--muted:#8899aa;--gold:#ffd740;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--navy2)}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:10px}
+
+/* ─── UPLOAD ─── */
+#upload-screen{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:40px;
+  background:radial-gradient(ellipse at 15% 25%,rgba(30,111,220,.14) 0%,transparent 55%),
+             radial-gradient(ellipse at 85% 75%,rgba(0,212,255,.07) 0%,transparent 55%),var(--bg);
+}
+.upload-logo{display:flex;align-items:center;gap:14px;margin-bottom:40px}
+.logo-box{width:50px;height:50px;border-radius:13px;background:linear-gradient(135deg,var(--blue),var(--cyan));
+  display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#fff;
+  box-shadow:0 0 22px rgba(30,111,220,.45)}
+.logo-text h1{font-size:22px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+.logo-text p{font-size:11px;color:var(--cyan);letter-spacing:3px;text-transform:uppercase;font-weight:300}
+
+.files-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;max-width:780px;margin-bottom:20px}
+
+.drop-zone{
+  border:2px dashed rgba(30,111,220,.4);border-radius:18px;padding:36px 28px;
+  text-align:center;cursor:pointer;background:rgba(30,111,220,.04);
+  transition:all .25s;position:relative;
+}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--cyan);background:rgba(0,212,255,.06);transform:translateY(-2px)}
+.drop-zone.loaded{border-color:var(--green);background:rgba(0,230,118,.05);border-style:solid}
+.drop-icon{font-size:36px;margin-bottom:10px;opacity:.75}
+.drop-title{font-size:15px;font-weight:600;margin-bottom:6px}
+.drop-sub{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:18px}
+.drop-tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
+.drop-tag.current{background:rgba(0,212,255,.15);color:var(--cyan);border:1px solid rgba(0,212,255,.3)}
+.drop-tag.prev{background:rgba(255,171,64,.15);color:var(--amber);border:1px solid rgba(255,171,64,.3)}
+.drop-btn{display:inline-block;padding:10px 24px;border:1px solid var(--border);border-radius:9px;
+  color:var(--text);font-size:13px;font-weight:600;cursor:pointer;background:var(--navy2);transition:all .2s}
+.drop-btn:hover{background:var(--blue);border-color:var(--blue);color:#fff}
+.drop-loaded{font-size:12px;color:var(--green);margin-top:8px;font-weight:600}
+.f-hidden{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+
+.go-btn{
+  padding:14px 48px;background:linear-gradient(135deg,var(--blue),#1559b8);
+  border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;
+  cursor:pointer;letter-spacing:.5px;transition:all .2s;
+  box-shadow:0 4px 18px rgba(30,111,220,.45);
+  opacity:.4;pointer-events:none;
+}
+.go-btn.ready{opacity:1;pointer-events:all}
+.go-btn.ready:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(30,111,220,.55)}
+
+.team-config{width:100%;max-width:780px;margin-top:20px;background:var(--card);
+  border:1px solid var(--border);border-radius:14px;padding:20px}
+.team-config h3{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:14px}
+.team-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+.t-col{display:flex;flex-direction:column;gap:5px}
+.t-lbl{font-size:10px;color:var(--muted);letter-spacing:.5px}
+.t-inp{background:var(--navy2);border:1px solid var(--border);color:var(--text);
+  padding:7px 10px;border-radius:7px;font-size:12px;outline:none;width:100%}
+.t-inp:focus{border-color:var(--blue)}
+
+.upload-tip{margin-top:18px;font-size:11px;color:var(--muted);text-align:center;line-height:1.7;max-width:600px}
+.upload-tip strong{color:var(--cyan)}
+
+/* ─── LOADING ─── */
+#loading-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:18px}
+.spinner{width:44px;height:44px;border:3px solid rgba(255,255,255,.08);border-top-color:var(--cyan);
+  border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{font-size:13px;color:var(--muted);letter-spacing:1px}
+
+/* ─── DASHBOARD ─── */
+#dashboard{display:none}
+
+.dash-header{background:linear-gradient(135deg,#0d1b2a,#1b2a3b);border-bottom:2px solid var(--blue);
+  padding:15px 34px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;box-shadow:0 4px 22px rgba(0,0,0,.5)}
+.hd-left{display:flex;align-items:center;gap:13px}
+.hd-logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--cyan));
+  display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#fff;
+  box-shadow:0 0 15px rgba(30,111,220,.5)}
+.hd-title{font-size:17px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+.hd-sub{font-size:10px;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;font-weight:300}
+.hd-right{display:flex;align-items:center;gap:10px}
+.hd-date{text-align:right}
+.fecha-txt{font-size:12px;color:var(--cyan);letter-spacing:1.5px;text-transform:uppercase}
+.corte-txt{font-size:10px;color:var(--muted);margin-top:2px}
+.btn-reload{padding:7px 16px;background:rgba(30,111,220,.2);border:1px solid rgba(30,111,220,.4);
+  border-radius:8px;color:var(--blue-lt);font-size:11px;font-weight:600;cursor:pointer;
+  transition:all .2s;white-space:nowrap}
+.btn-reload:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+.tabs-bar{background:var(--navy2);border-bottom:1px solid var(--border);
+  padding:0 34px;display:flex;gap:1px;overflow-x:auto}
+.tab{padding:13px 20px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.tab.new-tab{position:relative}
+.tab.new-tab::after{content:'NEW';position:absolute;top:8px;right:4px;
+  font-size:7px;background:var(--amber);color:#000;padding:1px 4px;border-radius:4px;font-weight:700}
+
+.content{padding:26px 34px;max-width:1920px;margin:0 auto}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ─── KPI ─── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:13px;margin-bottom:22px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:18px 20px;
+  position:relative;overflow:hidden;transition:transform .2s;animation:fadeUp .4s ease both}
+.kpi-card:hover{transform:translateY(-2px)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:13px 13px 0 0}
+.kpi-card.blue::before{background:var(--blue)}.kpi-card.cyan::before{background:var(--cyan)}
+.kpi-card.green::before{background:var(--green)}.kpi-card.red::before{background:var(--red)}
+.kpi-card.amber::before{background:var(--amber)}.kpi-card.purple::before{background:var(--purple)}
+.kpi-card.gold::before{background:var(--gold)}
+.kpi-lbl{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.kpi-val{font-size:28px;font-weight:700;line-height:1;color:#fff}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.kpi-icon{position:absolute;top:14px;right:14px;font-size:24px;opacity:.12}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── DELTA BADGE ─── */
+.delta{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;
+  padding:2px 7px;border-radius:12px;white-space:nowrap}
+.delta.up{background:rgba(0,230,118,.15);color:var(--green)}
+.delta.down{background:rgba(255,82,82,.15);color:var(--red)}
+.delta.neutral{background:rgba(150,150,150,.12);color:#999}
+
+/* ─── SECTION TITLE ─── */
+.sec-title{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--cyan);
+  margin-bottom:11px;display:flex;align-items:center;gap:10px}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ─── CHARTS ─── */
+.charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-bottom:22px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:18px}
+.chart-title{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:13px}
+
+/* ─── TABLES ─── */
+.table-card{background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:hidden;margin-bottom:20px}
+.table-hdr{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
+.table-hdr-title{font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+.filters{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.f-input,.f-select{background:var(--navy2);border:1px solid var(--border);color:var(--text);
+  padding:6px 10px;border-radius:7px;font-size:11px;outline:none;cursor:pointer}
+.f-input:focus,.f-select:focus{border-color:var(--blue)}
+.sort-btn{background:var(--navy2);border:1px solid var(--border);color:var(--muted);
+  padding:6px 13px;border-radius:7px;font-size:10px;font-weight:600;letter-spacing:1px;
+  text-transform:uppercase;cursor:pointer;transition:all .2s}
+.sort-btn.active,.sort-btn:hover{background:var(--blue);border-color:var(--blue);color:#fff}
+.tbl-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--navy2);padding:10px 14px;text-align:left;font-size:9px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;color:var(--muted);white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{color:var(--cyan)}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background .12s}
+tbody tr:hover{background:rgba(30,111,220,.07)}
+tbody td{padding:11px 14px;font-size:12px;vertical-align:middle}
+td.td-name{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+td.td-money{font-size:13px;font-weight:700;color:#fff}
+td.td-proy{font-size:13px;font-weight:700;color:var(--cyan)}
+td.td-rev26{font-size:13px;font-weight:700;color:var(--gold)}
+td.td-fecha{font-size:11px;color:var(--muted);white-space:nowrap}
+td.td-fecha.pronto{color:var(--amber)}
+.no-data{text-align:center;padding:32px;color:var(--muted);font-size:13px}
+
+/* ─── BADGES ─── */
+.badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:9px;font-weight:700;
+  letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+.badge.estudio{background:rgba(0,212,255,.12);color:var(--cyan);border:1px solid rgba(0,212,255,.25)}
+.badge.elaboracion{background:rgba(255,171,64,.12);color:var(--amber);border:1px solid rgba(255,171,64,.25)}
+.badge.propuesta{background:rgba(30,111,220,.18);color:var(--blue-lt);border:1px solid rgba(30,111,220,.3)}
+.badge.standby{background:rgba(150,150,150,.12);color:#999;border:1px solid rgba(150,150,150,.2)}
+.badge.won{background:rgba(0,230,118,.12);color:var(--green);border:1px solid rgba(0,230,118,.25)}
+.badge.lost{background:rgba(255,82,82,.12);color:var(--red);border:1px solid rgba(255,82,82,.25)}
+.sector-chip{display:inline-block;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;text-transform:uppercase}
+.sector-chip.gobierno{background:rgba(30,111,220,.18);color:#90caf9}
+.sector-chip.comercial{background:rgba(255,171,64,.18);color:var(--amber)}
+
+/* ─── PROB BAR ─── */
+.prob-bar{display:flex;align-items:center;gap:6px}
+.prob-track{width:50px;height:4px;background:rgba(255,255,255,.1);border-radius:10px;overflow:hidden}
+.prob-fill{height:100%;border-radius:10px}
+.prob-num{font-size:12px;font-weight:700;color:#fff;min-width:28px;text-align:right}
+
+/* ─── RANK ─── */
+.rank{font-size:18px;font-weight:900;color:rgba(255,255,255,.07)}
+.rank.top3{color:var(--gold);opacity:.85}
+
+/* ─── EXEC CARDS ─── */
+.exec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(265px,1fr));gap:13px;margin-bottom:22px}
+.exec-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:20px;
+  position:relative;overflow:hidden}
+.exec-card::after{content:'';position:absolute;top:0;left:0;width:4px;height:100%;border-radius:13px 0 0 13px}
+.exec-card.c0::after{background:#1e6fdc}.exec-card.c1::after{background:#00d4ff}
+.exec-card.c2::after{background:#ffab40}.exec-card.c3::after{background:#ce93d8}
+.exec-name{font-size:17px;font-weight:700;margin-bottom:2px}
+.exec-role{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.exec-stats{display:flex;gap:12px;margin-bottom:12px}
+.e-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.e-val{font-size:18px;font-weight:700}
+.e-sub{font-size:10px;color:var(--muted)}
+.exec-prog-bar{height:4px;background:rgba(255,255,255,.07);border-radius:10px;overflow:hidden;margin-top:10px}
+.exec-prog-fill{height:100%;border-radius:10px}
+
+/* ─── VARIANZA ─── */
+.var-kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:13px;margin-bottom:22px}
+.var-section{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--muted);margin:20px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.var-new-row{background:rgba(0,230,118,.04)}
+.var-changed-row{background:rgba(255,171,64,.04)}
+.fase-arrow{font-size:11px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:4px}
+
+/* ─── NUEVO MES ─── */
+.new-badge{background:rgba(0,230,118,.18);color:var(--green);border:1px solid rgba(0,230,118,.3);
+  font-size:9px;font-weight:700;padding:2px 7px;border-radius:12px;letter-spacing:.5px}
+
+/* ─── 2-COL ─── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:20px}
+
+/* ─── FOOTER ─── */
+.dash-footer{text-align:center;padding:18px 34px;font-size:10px;color:var(--muted);
+  letter-spacing:1px;border-top:1px solid var(--border);margin-top:28px}
+
+/* ─── TOTALS ROW ─── */
+tfoot tr{border-top:2px solid rgba(255,255,255,.15);background:rgba(30,111,220,.08)}
+tfoot td{padding:11px 14px;font-size:12px;font-weight:700;color:#fff}
+tfoot td.tf-label{color:var(--muted);font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
+tfoot td.tf-money{font-size:13px;font-weight:800;color:#fff}
+tfoot td.tf-proy{font-size:13px;font-weight:800;color:var(--cyan)}
+tfoot td.tf-rev26{font-size:13px;font-weight:800;color:var(--gold)}
+
+/* ─── NO-PREV ─── */
+.no-prev-msg{text-align:center;padding:60px 40px;color:var(--muted)}
+.no-prev-msg .icon{font-size:48px;margin-bottom:16px;opacity:.4}
+.no-prev-msg h3{font-size:16px;color:var(--text);margin-bottom:8px}
+.no-prev-msg p{font-size:13px;line-height:1.7}
+</style>
+</head>
+<body>
+
+<!-- ════════════ UPLOAD SCREEN ════════════ -->
+<div id="upload-screen">
+  <div class="upload-logo">
+    <div class="logo-box">SC</div>
+    <div class="logo-text">
+      <h1>Sales Command</h1>
+      <p>Portal Comercial · Carga Semanal</p>
+    </div>
+  </div>
+
+  <div class="files-row">
+    <!-- CSV ACTUAL -->
+    <div class="drop-zone" id="dz-current">
+      <input type="file" class="f-hidden" id="fi-current" accept=".csv">
+      <div class="drop-tag current">📅 CSV Semana Actual</div>
+      <div class="drop-icon">📊</div>
+      <div class="drop-title">CSV de esta semana</div>
+      <div class="drop-sub">Arrastra el reporte de oportunidades<br>descargado hoy del CRM</div>
+      <button class="drop-btn" onclick="document.getElementById('fi-current').click();event.stopPropagation()">Seleccionar archivo</button>
+      <div class="drop-loaded" id="loaded-current" style="display:none"></div>
+    </div>
+
+    <!-- CSV ANTERIOR -->
+    <div class="drop-zone" id="dz-prev">
+      <input type="file" class="f-hidden" id="fi-prev" accept=".csv">
+      <div class="drop-tag prev">📅 CSV Semana Anterior <span style="opacity:.6;font-size:9px;">(opcional)</span></div>
+      <div class="drop-icon">📁</div>
+      <div class="drop-title">CSV de la semana pasada</div>
+      <div class="drop-sub">Necesario para el análisis<br>de varianza semanal</div>
+      <button class="drop-btn" onclick="document.getElementById('fi-prev').click();event.stopPropagation()">Seleccionar archivo</button>
+      <div class="drop-loaded" id="loaded-prev" style="display:none"></div>
+    </div>
+  </div>
+
+  <button class="go-btn" id="go-btn" onclick="startProcessing()">⚡ Generar Tablero</button>
+
+  <div class="team-config">
+    <h3>⚙️ Equipo Comercial</h3>
+    <div class="team-grid">
+      <div class="t-col"><div class="t-lbl">Ejecutivo 1</div><input class="t-inp" id="e1n" value="Jose Osorio">
+        <div class="t-lbl" style="margin-top:4px">Rol</div><input class="t-inp" id="e1r" value="Seguridad Nacional"></div>
+      <div class="t-col"><div class="t-lbl">Ejecutivo 2</div><input class="t-inp" id="e2n" value="Julio Sevilla">
+        <div class="t-lbl" style="margin-top:4px">Rol</div><input class="t-inp" id="e2r" value="Gobierno Civil"></div>
+      <div class="t-col"><div class="t-lbl">Ejecutivo 3</div><input class="t-inp" id="e3n" value="Pedro Salguero">
+        <div class="t-lbl" style="margin-top:4px">Rol</div><input class="t-inp" id="e3r" value="Comisionista"></div>
+      <div class="t-col"><div class="t-lbl">Ejecutivo 4</div><input class="t-inp" id="e4n" value="Mauricio Avila">
+        <div class="t-lbl" style="margin-top:4px">Rol</div><input class="t-inp" id="e4r" value="Gerente Comercial"></div>
+    </div>
+  </div>
+
+  <p class="upload-tip"><strong>Sin instalaciones.</strong> Todo el procesamiento ocurre en tu navegador.
+    Ningún dato sale de tu computadora. Compatible con Chrome, Edge y Firefox.</p>
+</div>
+
+<!-- ════════════ LOADING ════════════ -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div class="loading-msg" id="loading-msg">Procesando...</div>
+</div>
+
+<!-- ════════════ DASHBOARD ════════════ -->
+<div id="dashboard">
+  <div class="dash-header">
+    <div class="hd-left">
+      <div class="hd-logo">SC</div>
+      <div><div class="hd-title">Sales Command</div>
+        <div class="hd-sub" id="hd-sub">Pipeline &amp; Oportunidades</div></div>
+    </div>
+    <div class="hd-right">
+      <div class="hd-date">
+        <div class="fecha-txt" id="fecha-hoy"></div>
+        <div class="corte-txt" id="archivo-nombre">Corte semanal</div>
+      </div>
+      <button class="btn-reload" onclick="resetPortal()">⬆ Nuevo CSV</button>
+    </div>
+  </div>
+
+  <div class="tabs-bar">
+    <div class="tab active" onclick="showTab(0)">📊 Resumen</div>
+    <div class="tab" onclick="showTab(1)">🏅 Top 10</div>
+    <div class="tab" onclick="showTab(2)">💰 Top 20</div>
+    <div class="tab" onclick="showTab(3)">👤 Ejecutivos</div>
+    <div class="tab" onclick="showTab(4)">📋 Pipeline</div>
+    <div class="tab new-tab" onclick="showTab(5)">🆕 Nuevo Mes</div>
+    <div class="tab new-tab" onclick="showTab(6)">📈 Varianza</div>
+    <div class="tab" onclick="showTab(7)">✅ Cerradas</div>
+  </div>
+
+  <div class="content">
+
+  <!-- TAB 0: RESUMEN -->
+  <div class="tab-panel active" id="tab-0">
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">👤 Pipeline por Ejecutivo</div>
+        <canvas id="chartPie" height="185"></canvas>
+        <div id="pie-legend" style="margin-top:10px;display:flex;flex-direction:column;gap:7px;"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" id="fc-title-1"></div>
+        <div id="fc-kpis-1" style="display:flex;gap:12px;margin-bottom:11px;"></div>
+        <canvas id="chartFC1" height="190"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" id="fc-title-2"></div>
+        <div id="fc-kpis-2" style="display:flex;gap:12px;margin-bottom:11px;"></div>
+        <canvas id="chartFC2" height="190"></canvas>
+      </div>
+    </div>
+    <div class="sec-title">⚡ Atención Inmediata</div>
+    <div class="two-col">
+      <div class="table-card">
+        <div class="table-hdr"><span class="table-hdr-title" style="color:var(--amber);">⚠️ Alta Prob. + Monto Alto</span></div>
+        <table><thead><tr><th>Oportunidad</th><th>Proyectado</th><th>Rev 2026</th><th>%</th><th>Ejecutivo</th></tr></thead>
+        <tbody id="alerta-body"></tbody></table>
+      </div>
+      <div class="table-card">
+        <div class="table-hdr"><span class="table-hdr-title" style="color:var(--red);">📅 Próximas a Vencer</span></div>
+        <table><thead><tr><th>Oportunidad</th><th>Proyectado</th><th>Rev 2026</th><th>Cierre</th><th>Ejecutivo</th></tr></thead>
+        <tbody id="vencer-body"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 1: TOP 10 -->
+  <div class="tab-panel" id="tab-1">
+    <div style="display:flex;gap:7px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:11px;color:var(--muted);">Ordenar por:</span>
+      <button class="sort-btn active" onclick="renderTop10('monto',this)">Monto Proyectado</button>
+      <button class="sort-btn" onclick="renderTop10('valor',this)">Valor Contrato</button>
+      <button class="sort-btn" onclick="renderTop10('rev26',this)">Revenue FY2026</button>
+      <button class="sort-btn" onclick="renderTop10('prob',this)">Probabilidad</button>
+      <button class="sort-btn" onclick="renderTop10('fecha',this)">Fecha Cierre</button>
+    </div>
+    <div style="margin-bottom:16px"><canvas id="chartTop10" height="85"></canvas></div>
+    <div class="table-card">
+      <div class="table-hdr"><span class="table-hdr-title">🏅 Top 10 Oportunidades Activas</span>
+        <div style="font-size:10px;color:var(--muted);">💛 Revenue FY2026 = monto proyectado con cierre en 2026</div>
+      </div>
+      <div class="tbl-scroll">
+        <table><thead><tr>
+          <th>#</th><th>Oportunidad</th><th>Valor Contrato</th><th>Mto. Proyectado</th>
+          <th style="color:var(--gold)">⭐ Rev FY2026</th>
+          <th>Prob.</th><th>Fase</th><th>Ejecutivo</th><th>Cierre Est.</th><th>Sector</th>
+        </tr></thead><tbody id="top10-body"></tbody>
+          <tfoot id="top10-tfoot"></tfoot></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: TOP 20 -->
+  <div class="tab-panel" id="tab-2">
+    <div class="table-card">
+      <div class="table-hdr">
+        <span class="table-hdr-title">💰 Top 20 — Valor Contrato (Activas + Ganadas)</span>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <span class="badge estudio">Activas</span><span class="badge won">Won ✓</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1.8fr;gap:0;">
+        <div style="padding:16px 12px 16px 16px;border-right:1px solid var(--border);">
+          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Valor Contrato MXN</div>
+          <canvas id="chartTop20" height="440"></canvas>
+        </div>
+        <div class="tbl-scroll">
+          <table><thead><tr>
+            <th>#</th><th>Oportunidad</th><th>Valor Contrato</th><th>Mto. Proyectado</th>
+            <th style="color:var(--gold)">⭐ Rev FY2026</th>
+            <th>Prob.</th><th>Ejecutivo</th><th>Fase</th><th>Cierre Est.</th>
+          </tr></thead><tbody id="top20-body"></tbody>
+            <tfoot id="top20-tfoot"></tfoot></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: EJECUTIVOS -->
+  <div class="tab-panel" id="tab-3">
+    <div class="exec-grid" id="exec-grid"></div>
+    <div class="sec-title">Pipeline Individual</div>
+    <div style="display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;" id="exec-filter-btns"></div>
+    <div class="table-card">
+      <div class="tbl-scroll">
+        <table><thead><tr>
+          <th>Oportunidad</th><th>Ejecutivo</th><th>Valor Contrato</th><th>Mto. Proyectado</th>
+          <th style="color:var(--gold)">⭐ Rev FY2026</th><th>Prob.</th><th>Fase</th><th>Cierre Est.</th>
+        </tr></thead><tbody id="exec-table-body"></tbody>
+          <tfoot id="exec-tfoot"></tfoot></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: PIPELINE COMPLETO -->
+  <div class="tab-panel" id="tab-4">
+    <div class="table-card">
+      <div class="table-hdr">
+        <span class="table-hdr-title">📋 Pipeline Activo</span>
+        <div class="filters">
+          <input type="text" class="f-input" id="search-inp" placeholder="🔍 Buscar..." oninput="renderFull()" style="width:160px;">
+          <select class="f-select" id="fase-sel" onchange="renderFull()">
+            <option value="">Todas las fases</option>
+            <option>Estudio de Mercado</option>
+            <option>Elaboracion de Propuesta o Cotizacion</option>
+            <option>Stand By</option>
+            <option>Propuesta Entregada</option>
+          </select>
+          <select class="f-select" id="exec-sel4" onchange="renderFull()"></select>
+        </div>
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr>
+            <th onclick="sortFull('op')">Oportunidad ↕</th><th onclick="sortFull('ejecutivo')">Ejecutivo ↕</th>
+            <th onclick="sortFull('valor')">Valor ↕</th><th onclick="sortFull('monto')">Proyectado ↕</th>
+            <th onclick="sortFull('rev26')" style="color:var(--gold)">⭐Rev FY2026 ↕</th>
+            <th onclick="sortFull('prob')">Prob. ↕</th><th onclick="sortFull('fase')">Fase ↕</th>
+            <th onclick="sortFull('fecha')">Cierre ↕</th><th>Sector</th><th>UEN</th>
+          </tr></thead>
+          <tbody id="full-body"></tbody>
+          <tfoot id="full-tfoot"></tfoot>
+        </table>
+      </div>
+      <div style="padding:10px 16px;font-size:11px;color:var(--muted);" id="full-count"></div>
+    </div>
+  </div>
+
+  <!-- TAB 5: NUEVO ESTE MES -->
+  <div class="tab-panel" id="tab-5">
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;" id="nm-kpis"></div>
+    <div class="sec-title">🆕 Oportunidades Creadas en los Últimos 30 Días</div>
+    <div class="table-card">
+      <div class="table-hdr">
+        <span class="table-hdr-title">Registros Recientes</span>
+        <div style="font-size:10px;color:var(--muted);">Ordenadas por fecha de creación más reciente</div>
+      </div>
+      <div class="tbl-scroll">
+        <table style="table-layout:fixed;min-width:1100px"><thead><tr>
+          <th style="width:280px;min-width:280px">Oportunidad</th>
+          <th style="width:140px">Fecha Creación</th>
+          <th style="width:110px">Ejecutivo</th>
+          <th style="width:110px">Valor Contrato</th>
+          <th style="width:110px">Mto. Proyectado</th>
+          <th style="width:100px;color:var(--gold)">⭐ Rev FY2026</th>
+          <th style="width:80px">Prob.</th>
+          <th style="width:100px">Fase</th>
+          <th style="width:110px">Cierre Est.</th>
+          <th style="width:80px">Sector</th>
+        </tr></thead>
+        <tbody id="nuevo-mes-body"></tbody>
+        <tfoot id="nm-tfoot"></tfoot>
+        </table>
+      </div>
+      <div style="padding:10px 16px;font-size:11px;color:var(--muted);" id="nm-count"></div>
+    </div>
+  </div>
+
+  <!-- TAB 6: VARIANZA SEMANAL -->
+  <div class="tab-panel" id="tab-6">
+    <div id="varianza-content"></div>
+  </div>
+
+  <!-- TAB 7: CERRADAS -->
+  <div class="tab-panel" id="tab-7">
+    <div class="kpi-grid" style="grid-template-columns:1fr 1fr;max-width:540px;margin-bottom:20px;">
+      <div class="kpi-card green"><div class="kpi-lbl">Total Ganadas</div>
+        <div class="kpi-val" id="kpi-won-val" style="color:var(--green)">—</div>
+        <div class="kpi-sub" id="kpi-won-cnt">—</div></div>
+      <div class="kpi-card red"><div class="kpi-lbl">Total Perdidas</div>
+        <div class="kpi-val" id="kpi-lost-val" style="color:var(--red)">—</div>
+        <div class="kpi-sub" id="kpi-lost-cnt">—</div></div>
+    </div>
+    <div class="sec-title">🏆 Ganadas</div>
+    <div class="table-card" style="margin-bottom:20px;">
+      <div class="tbl-scroll"><table><thead><tr><th>Oportunidad</th><th>Valor</th><th>Ejecutivo</th><th>Cierre</th><th>Sector</th></tr></thead>
+      <tbody id="won-body"></tbody>
+      <tfoot id="won-tfoot"></tfoot></table></div>
+    </div>
+    <div class="sec-title">❌ Perdidas</div>
+    <div class="table-card">
+      <div class="tbl-scroll"><table><thead><tr><th>Oportunidad</th><th>Valor</th><th>Ejecutivo</th><th>Cierre</th><th>Sector</th></tr></thead>
+      <tbody id="lost-body"></tbody>
+      <tfoot id="lost-tfoot"></tfoot></table></div>
+    </div>
+  </div>
+
+  </div><!-- /content -->
+  <div class="dash-footer">Sales Command · Tablero Comercial · Procesado localmente · Sin servidores · Datos confidenciales</div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   ESTADO GLOBAL
+══════════════════════════════════════════════════ */
+let TEAM = [];
+let ACTIVE = [], WON = [], LOST = [], ALL_NEW = [];
+let PREV_ACTIVE = [], PREV_WON = [], PREV_LOST = [];
+let HAS_PREV = false;
+let charts = {};
+let fullSort = {key:'monto', dir:-1};
+let execFilter = 'all';
+const EXEC_COLORS = ['#1e6fdc','#00d4ff','#ffab40','#ce93d8'];
+const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const FISCAL_YEAR = 2026;
+
+/* ══════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════ */
+const fmtM = n => {
+  if (n===null||n===undefined||isNaN(n)) return '—';
+  if (Math.abs(n)>=1e9) return '$'+(n/1e9).toFixed(1)+'B';
+  if (Math.abs(n)>=1e6) return '$'+(n/1e6).toFixed(1)+'M';
+  if (Math.abs(n)>=1e3) return '$'+(n/1e3).toFixed(0)+'K';
+  return '$'+n.toFixed(0);
+};
+const fmtDate = s => {
+  if (!s) return '—';
+  const d = new Date(s+'T00:00:00');
+  if (isNaN(d)) return s;
+  return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+};
+const fmtDateTime = s => {
+  if (!s) return '—';
+  const d = new Date(s);
+  if (isNaN(d)) return s;
+  return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+};
+
+function execColor(name) {
+  const t = TEAM.find(e=>e.name===name);
+  return t ? t.color : '#8899aa';
+}
+function execShort(name) {
+  if (!name) return '—';
+  const p = name.split(' ');
+  return p.length>=2 ? p[0][0]+'. '+p[p.length-1] : name;
+}
+function phaseBadge(f) {
+  if (!f) return '';
+  if (f==='Estudio de Mercado') return `<span class="badge estudio">Estudio</span>`;
+  if (f.includes('Elaboracion')||f.includes('Elaboración')) return `<span class="badge elaboracion">Elaboración</span>`;
+  if (f==='Stand By') return `<span class="badge standby">Stand By</span>`;
+  if (f==='Propuesta Entregada') return `<span class="badge propuesta">Propuesta</span>`;
+  if (f==='Closed Won') return `<span class="badge won">Won ✓</span>`;
+  if (f==='Closed Lost') return `<span class="badge lost">Lost</span>`;
+  return `<span class="badge">${f}</span>`;
+}
+function probBar(p) {
+  const pct = p||0;
+  const clr = pct>=70?'#00e676':pct>=50?'#ffab40':pct>=25?'#1e6fdc':'#ff5252';
+  return `<div class="prob-bar"><div class="prob-track"><div class="prob-fill" style="width:${pct}%;background:${clr}"></div></div><span class="prob-num">${pct}%</span></div>`;
+}
+function sectorChip(s) {
+  if (!s) return '';
+  const c = s.toLowerCase()==='comercial'?'comercial':'gobierno';
+  return `<span class="sector-chip ${c}">${s}</span>`;
+}
+function daysTill(ds) {
+  if (!ds) return null;
+  return Math.round((new Date(ds+'T00:00:00')-new Date())/86400000);
+}
+function fechaChip(ds) {
+  const d = daysTill(ds);
+  if (d===null) return '—';
+  const cls = d<60&&d>=0?'td-fecha pronto':'td-fecha';
+  return `<span class="${cls}">${fmtDate(ds)}</span>`;
+}
+
+/* Revenue FY2026: monto proyectado si la fecha de cierre cae en 2026
+   Si tiene fechas de servicio, pro-ratea los meses en 2026 */
+function calcRev26(r) {
+  if (!r.fecha) return 0;
+  const closeYear = new Date(r.fecha+'T00:00:00').getFullYear();
+  // Si tiene fechas de servicio, pro-ratea
+  if (r.inicioServ && r.finServ) {
+    const ini = new Date(r.inicioServ);
+    const fin = new Date(r.finServ);
+    const start26 = new Date('2026-01-01');
+    const end26   = new Date('2026-12-31');
+    const eff_ini = ini > start26 ? ini : start26;
+    const eff_fin = fin < end26   ? fin : end26;
+    if (eff_fin <= eff_ini) return 0;
+    const totalMs = fin - ini;
+    const inMs    = eff_fin - eff_ini;
+    if (totalMs <= 0) return 0;
+    return Math.round(r.monto * (inMs / totalMs));
+  }
+  return closeYear === FISCAL_YEAR ? r.monto : 0;
+}
+
+function deltaBadge(n, invert) {
+  if (n===0||isNaN(n)) return `<span class="delta neutral">= sin cambio</span>`;
+  const up = invert ? n<0 : n>0;
+  const cls = up?'up':'down';
+  const arrow = n>0?'▲':'▼';
+  return `<span class="delta ${cls}">${arrow} ${fmtM(Math.abs(n))}</span>`;
+}
+function deltaPct(n) {
+  if (n===0||isNaN(n)) return `<span class="delta neutral">—</span>`;
+  const cls = n>0?'up':'down';
+  const arrow = n>0?'▲':'▼';
+  return `<span class="delta ${cls}">${arrow} ${Math.abs(n).toFixed(0)}pp</span>`;
+}
+function faseArrow(old_f, new_f) {
+  if (old_f===new_f) return '—';
+  return `<div class="fase-arrow">${phaseBadge(old_f)} → ${phaseBadge(new_f)}</div>`;
+}
+
+/* ══════════════════════════════════════════════════
+   DRAG & DROP
+══════════════════════════════════════════════════ */
+let rawCurrent = null, rawPrev = null;
+
+function setupDZ(dzId, fiId, loadedId, isCurrent) {
+  const dz = document.getElementById(dzId);
+  const fi = document.getElementById(fiId);
+  const ld = document.getElementById(loadedId);
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f&&f.name.endsWith('.csv')) assignFile(f, isCurrent, dz, ld);
+    else alert('Por favor sube un archivo .csv');
+  });
+  fi.addEventListener('change', e => {
+    if (e.target.files[0]) assignFile(e.target.files[0], isCurrent, dz, ld);
+  });
+}
+
+function assignFile(file, isCurrent, dz, ld) {
+  Papa.parse(file, {
+    header:true, skipEmptyLines:true,
+    complete: res => {
+      if (isCurrent) { rawCurrent = res.data; }
+      else           { rawPrev    = res.data; }
+      dz.classList.add('loaded');
+      ld.style.display = 'block';
+      ld.textContent = '✓ ' + file.name;
+      checkReady();
+    }
+  });
+}
+
+function checkReady() {
+  const btn = document.getElementById('go-btn');
+  btn.classList.toggle('ready', rawCurrent !== null);
+}
+
+setupDZ('dz-current','fi-current','loaded-current',true);
+setupDZ('dz-prev','fi-prev','loaded-prev',false);
+
+/* ══════════════════════════════════════════════════
+   PROCESAR DATOS
+══════════════════════════════════════════════════ */
+function getTeam() {
+  return [1,2,3,4].map((i,idx) => ({
+    name:  document.getElementById(`e${i}n`).value.trim(),
+    role:  document.getElementById(`e${i}r`).value.trim(),
+    color: EXEC_COLORS[idx],
+    cls:   `c${idx}`,
+  })).filter(e=>e.name);
+}
+
+function parseCSV(raw) {
+  if (!raw) return { active:[], won:[], lost:[], all:[] };
+  const cleanKey = k => k.trim().replace(/^"|"$/g,'').trim();
+  const cleanVal = v => v===null||v===undefined?'':String(v).trim().replace(/^"|"$/g,'').trim();
+  const rows = raw.map(r => {
+    const o={};
+    for (const [k,v] of Object.entries(r)) o[cleanKey(k)]=cleanVal(v);
+    return o;
+  });
+  const col = (r,...names) => { for(const n of names){ if(r[n]!==undefined&&r[n]!=='')return r[n]; } return ''; };
+  const num = v => { const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; };
+  const parseDate = v => {
+    if (!v) return null;
+    // dd-mm-yyyy hh:mm or dd-mm-yyyy
+    let m = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    m = v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+    return null;
+  };
+
+  const mapped = rows.map(r => {
+    const rec = {
+      op:        col(r,'Oportunidad','oportunidad'),
+      cuenta:    col(r,'Cuenta'),
+      valor:     num(col(r,'Valor contrato','Valor Contrato')),
+      monto:     num(col(r,'Monto proyectado','Monto Proyectado')),
+      prob:      num(col(r,'Probabilidad de cierre de venta','Probabilidad')),
+      fecha:     parseDate(col(r,'Fecha estimada de cierre')),
+      creacion:  col(r,'Fecha de creación','Fecha de creacion'),
+      ejecutivo: col(r,'Asignado a','Assigned To','Owner'),
+      fase:      col(r,'Fase de venta','Stage'),
+      sector:    col(r,'Sector'),
+      uen:       col(r,'Unidad Estrategica de Negocio','UEN'),
+      tipo:      col(r,'Tipo de Venta','Tipo'),
+      inicioServ: parseDate(col(r,'Fecha de Inicio de Servicios')),
+      finServ:    parseDate(col(r,'Fecha de Finalización de Servicios')),
+    };
+    rec.rev26 = calcRev26(rec);
+    return rec;
+  }).filter(r=>r.op);
+
+  return {
+    active: mapped.filter(r=>!r.fase.includes('Closed')),
+    won:    mapped.filter(r=>r.fase==='Closed Won'),
+    lost:   mapped.filter(r=>r.fase==='Closed Lost'),
+    all:    mapped,
+  };
+}
+
+function startProcessing() {
+  if (!rawCurrent) return;
+  TEAM = getTeam();
+  setLoading(true,'Procesando datos...');
+  setTimeout(() => {
+    const cur  = parseCSV(rawCurrent);
+    const prev = parseCSV(rawPrev);
+    ACTIVE = cur.active; WON = cur.won; LOST = cur.lost; ALL_NEW = cur.all;
+    PREV_ACTIVE = prev.active; PREV_WON = prev.won; PREV_LOST = prev.lost;
+    HAS_PREV = rawPrev !== null;
+    buildDashboard();
+  }, 250);
+}
+
+/* ══════════════════════════════════════════════════
+   BUILD DASHBOARD
+══════════════════════════════════════════════════ */
+function buildDashboard() {
+  Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});
+  charts={};
+  Chart.defaults.color='#8899aa';
+  Chart.defaults.font.family="'Segoe UI',sans-serif";
+
+  const now = new Date();
+  document.getElementById('fecha-hoy').textContent =
+    now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}).toUpperCase();
+  if (HAS_PREV)
+    document.getElementById('hd-sub').textContent = 'Comparativo semanal · Varianza activa';
+
+  renderKPIs();
+  renderChartPie();
+  renderForecastCharts();
+  renderAlertas();
+  renderTop10('monto',null);
+  renderTop20();
+  renderExecGrid();
+  buildExecFilterBtns();
+  renderExecTable();
+  buildExecSelect();
+  renderFull();
+  renderClosed();
+  renderNuevoMes();
+  renderVarianza();
+
+  setLoading(false);
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  showTab(0);
+}
+
+/* ─── KPIs ─── */
+function renderKPIs() {
+  const pipeline = ACTIVE.reduce((a,b)=>a+b.valor,0);
+  const proy     = ACTIVE.reduce((a,b)=>a+b.monto,0);
+  const rev26    = ACTIVE.reduce((a,b)=>a+b.rev26,0);
+  const wonVal   = WON.reduce((a,b)=>a+b.valor,0);
+  const lostVal  = LOST.reduce((a,b)=>a+b.valor,0);
+  const closed   = WON.length+LOST.length;
+  const winRate  = closed>0?Math.round(WON.length/closed*100):0;
+
+  // Deltas vs semana anterior
+  let dPipe='', dProy='', dRev='', dWon='';
+  if (HAS_PREV) {
+    const pPipe = PREV_ACTIVE.reduce((a,b)=>a+b.valor,0);
+    const pProy = PREV_ACTIVE.reduce((a,b)=>a+b.monto,0);
+    const pRev  = PREV_ACTIVE.reduce((a,b)=>a+b.rev26,0);
+    const pWon  = PREV_WON.reduce((a,b)=>a+b.valor,0);
+    dPipe = `<div style="margin-top:4px">${deltaBadge(pipeline-pPipe)}</div>`;
+    dProy = `<div style="margin-top:4px">${deltaBadge(proy-pProy)}</div>`;
+    dRev  = `<div style="margin-top:4px">${deltaBadge(rev26-pRev)}</div>`;
+    dWon  = `<div style="margin-top:4px">${deltaBadge(wonVal-pWon)}</div>`;
+  }
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card blue"><div class="kpi-icon">💼</div><div class="kpi-lbl">Pipeline Activo</div><div class="kpi-val">${fmtM(pipeline)}</div><div class="kpi-sub">${ACTIVE.length} oportunidades${dPipe}</div></div>
+    <div class="kpi-card cyan"><div class="kpi-icon">🎯</div><div class="kpi-lbl">Monto Proyectado</div><div class="kpi-val">${fmtM(proy)}</div><div class="kpi-sub">Ponderado${dProy}</div></div>
+    <div class="kpi-card gold" style="border-top-color:var(--gold)"><div class="kpi-icon">⭐</div><div class="kpi-lbl">Revenue FY${FISCAL_YEAR}</div><div class="kpi-val" style="color:var(--gold)">${fmtM(rev26)}</div><div class="kpi-sub">Cierre en ${FISCAL_YEAR}${dRev}</div></div>
+    <div class="kpi-card green"><div class="kpi-icon">🏆</div><div class="kpi-lbl">Ganadas (Won)</div><div class="kpi-val">${fmtM(wonVal)}</div><div class="kpi-sub">${WON.length} deals${dWon}</div></div>
+    <div class="kpi-card amber"><div class="kpi-icon">📈</div><div class="kpi-lbl">Win Rate</div><div class="kpi-val">${winRate}%</div><div class="kpi-sub">${WON.length} de ${closed} cerradas</div></div>
+    <div class="kpi-card purple"><div class="kpi-icon">📡</div><div class="kpi-lbl">Total Oportunidades</div><div class="kpi-val">${ALL_NEW.length}</div><div class="kpi-sub">Historial completo</div></div>
+  `;
+}
+
+/* ─── PIE ─── */
+function renderChartPie() {
+  const labels = TEAM.map(e=>e.name);
+  const data   = TEAM.map(e=>ACTIVE.filter(r=>r.ejecutivo===e.name).reduce((a,b)=>a+b.valor,0));
+  const colors = TEAM.map(e=>e.color);
+  charts.pie = new Chart(document.getElementById('chartPie'),{
+    type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderColor:'#111d2e',borderWidth:3}]},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtM(ctx.parsed)}`}}},cutout:'62%'}
+  });
+  document.getElementById('pie-legend').innerHTML = TEAM.map((e,i)=>`
+    <div style="display:flex;justify-content:space-between;font-size:11px;">
+      <span style="color:${e.color};">● ${e.name} <small style="color:var(--muted)">(${e.role})</small></span>
+      <span style="color:#fff;font-weight:700;">${fmtM(data[i])}</span>
+    </div>`).join('');
+}
+
+/* ─── FORECAST ─── */
+function renderForecastCharts() {
+  [TEAM[0],TEAM[1]].forEach((exec,idx)=>{
+    if (!exec) return;
+    const n = idx+1;
+    const fdata = Array.from({length:12},(_,m)=>
+      ACTIVE.filter(r=>r.ejecutivo===exec.name&&r.fecha&&new Date(r.fecha+'T00:00:00').getFullYear()===FISCAL_YEAR&&new Date(r.fecha+'T00:00:00').getMonth()===m)
+            .reduce((a,b)=>a+b.monto,0)
+    );
+    const maxV = Math.max(...fdata);
+    const pip  = ACTIVE.filter(r=>r.ejecutivo===exec.name&&r.fecha&&new Date(r.fecha+'T00:00:00').getFullYear()===FISCAL_YEAR).reduce((a,b)=>a+b.valor,0);
+    const ops  = ACTIVE.filter(r=>r.ejecutivo===exec.name&&r.fecha&&new Date(r.fecha+'T00:00:00').getFullYear()===FISCAL_YEAR).length;
+    const peak = maxV>0 ? MESES[fdata.indexOf(maxV)] : '—';
+
+    document.getElementById(`fc-title-${n}`).innerHTML = `📅 Forecast ${FISCAL_YEAR} · <strong style="color:${exec.color}">${exec.name}</strong>`;
+    document.getElementById(`fc-kpis-${n}`).innerHTML = `
+      <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Pipeline</div>
+        <div style="font-size:18px;font-weight:700;color:${exec.color}">${fmtM(pip)}</div></div>
+      <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Ops</div>
+        <div style="font-size:18px;font-weight:700">${ops}</div></div>
+      <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Mes pico</div>
+        <div style="font-size:18px;font-weight:700;color:var(--amber)">${peak}</div></div>`;
+
+    const bg = exec.color.replace('#','');
+    const r16 = parseInt(bg.slice(0,2),16), g16=parseInt(bg.slice(2,4),16), b16=parseInt(bg.slice(4,6),16);
+    charts[`fc${n}`] = new Chart(document.getElementById(`chartFC${n}`),{
+      type:'bar',
+      data:{labels:MESES,datasets:[{data:fdata,
+        backgroundColor:fdata.map(v=>v===0?'rgba(255,255,255,.04)':v===maxV?`rgba(${r16},${g16},${b16},.95)`:`rgba(${r16},${g16},${b16},.6)`),
+        borderRadius:5,borderSkipped:false}]},
+      options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y===0?' Sin forecast':` ${fmtM(ctx.parsed.y)}`}}},
+        scales:{x:{grid:{display:false},ticks:{font:{size:9},color:'#8899aa'}},
+                y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>fmtM(v),font:{size:9},color:'#8899aa'},beginAtZero:true}}}
+    });
+  });
+}
+
+/* ─── ALERTAS ─── */
+function renderAlertas() {
+  const hoy = new Date();
+  const highs = [...ACTIVE].filter(r=>r.prob>=50).sort((a,b)=>b.monto-a.monto).slice(0,7);
+  document.getElementById('alerta-body').innerHTML = highs.map(r=>`
+    <tr><td class="td-name" title="${r.op}">${r.op}</td>
+    <td class="td-proy">${fmtM(r.monto)}</td>
+    <td class="td-rev26">${r.rev26>0?fmtM(r.rev26):'<span style="color:var(--muted)">—</span>'}</td>
+    <td>${probBar(r.prob)}</td>
+    <td style="font-size:11px;color:${execColor(r.ejecutivo)};font-weight:600">${execShort(r.ejecutivo)}</td></tr>`).join('')
+    ||'<tr><td colspan="5" class="no-data">Sin datos</td></tr>';
+
+  const fin26 = new Date('2026-12-31');
+  const pronto = [...ACTIVE].filter(r=>{const d=r.fecha?new Date(r.fecha+'T00:00:00'):null;return d&&d>=hoy&&d<=fin26;})
+    .sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).slice(0,7);
+  document.getElementById('vencer-body').innerHTML = pronto.map(r=>{
+    const days=daysTill(r.fecha);
+    return `<tr><td class="td-name" title="${r.op}">${r.op}</td>
+    <td class="td-proy">${fmtM(r.monto)}</td>
+    <td class="td-rev26">${r.rev26>0?fmtM(r.rev26):'<span style="color:var(--muted)">—</span>'}</td>
+    <td class="td-fecha ${days<60?'pronto':''}">${fmtDate(r.fecha)}<br><small>${days}d</small></td>
+    <td style="font-size:11px;color:${execColor(r.ejecutivo)};font-weight:600">${execShort(r.ejecutivo)}</td></tr>`;
+  }).join('')||'<tr><td colspan="5" class="no-data">Sin vencimientos próximos</td></tr>';
+}
+
+/* ─── TOP 10 ─── */
+function renderTop10(key, btn) {
+  document.querySelectorAll('#tab-1 .sort-btn').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  let sorted=[...ACTIVE];
+  if (key==='monto')  sorted.sort((a,b)=>b.monto-a.monto);
+  else if (key==='valor') sorted.sort((a,b)=>b.valor-a.valor);
+  else if (key==='rev26') sorted.sort((a,b)=>b.rev26-a.rev26);
+  else if (key==='prob')  sorted.sort((a,b)=>b.prob-a.prob);
+  else if (key==='fecha') sorted.sort((a,b)=>new Date(a.fecha||0)-new Date(b.fecha||0));
+  const top=sorted.slice(0,10);
+  if (charts.top10) charts.top10.destroy();
+  charts.top10=new Chart(document.getElementById('chartTop10'),{
+    type:'bar',
+    data:{labels:top.map(r=>r.op.length>36?r.op.slice(0,36)+'…':r.op),
+      datasets:[{data:top.map(r=>key==='rev26'?r.rev26:key==='monto'?r.monto:key==='valor'?r.valor:key==='prob'?r.prob:Math.max(0,Math.round((new Date(r.fecha+'T00:00:00')-new Date())/86400000))),
+        backgroundColor:top.map((_,i)=>i<3?'rgba(255,215,64,.85)':'rgba(30,111,220,.7)'),borderRadius:5}]},
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmtM(ctx.parsed.x)}`}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>fmtM(v),font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}
+  });
+  document.getElementById('top10-body').innerHTML=top.map((r,i)=>`
+    <tr><td><span class="rank ${i<3?'top3':''}">${i+1}</span></td>
+    <td class="td-name" title="${r.op}">${r.op}</td>
+    <td class="td-money">${fmtM(r.valor)}</td>
+    <td class="td-proy">${fmtM(r.monto)}</td>
+    <td class="td-rev26">${r.rev26>0?fmtM(r.rev26):'<span style="color:var(--muted)">—</span>'}</td>
+    <td>${probBar(r.prob)}</td><td>${phaseBadge(r.fase)}</td>
+    <td style="font-size:11px;color:${execColor(r.ejecutivo)};font-weight:600">${r.ejecutivo}</td>
+    <td>${fechaChip(r.fecha)}</td><td>${sectorChip(r.sector)}</td></tr>`).join('');
+  const t10v=top.reduce((a,b)=>a+b.valor,0),t10m=top.reduce((a,b)=>a+b.monto,0),t10r=top.reduce((a,b)=>a+b.rev26,0);
+  document.getElementById('top10-tfoot').innerHTML=`<tr>
+    <td class="tf-label" colspan="2">TOTAL TOP 10</td>
+    <td class="tf-money">${fmtM(t10v)}</td><td class="tf-proy">${fmtM(t10m)}</td>
+    <td class="tf-rev26">${fmtM(t10r)}</td><td colspan="5"></td></tr>`;
+}
+
+/* ─── TOP 20 ─── */
+function renderTop20() {
+  const all=[...ACTIVE.map(r=>({...r,status:'activa'})),...WON.map(r=>({...r,status:'won'}))]
+    .sort((a,b)=>b.valor-a.valor).slice(0,20);
+  const barColors=all.map(r=>r.status==='won'?'rgba(0,230,118,.75)':r.prob>=70?'rgba(255,215,64,.85)':'rgba(30,111,220,.75)');
+  if (charts.top20) charts.top20.destroy();
+  charts.top20=new Chart(document.getElementById('chartTop20'),{
+    type:'bar',
+    data:{labels:all.map(r=>r.op.length>30?r.op.slice(0,30)+'…':r.op),
+      datasets:[{data:all.map(r=>r.valor),backgroundColor:barColors,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmtM(ctx.parsed.x)}`}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>fmtM(v),font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:8},color:'#8899aa'}}}}
+  });
+  document.getElementById('top20-body').innerHTML=all.map((r,i)=>`
+    <tr style="${r.status==='won'?'background:rgba(0,230,118,.03)':''}">
+    <td><span class="rank ${i<3?'top3':''}">${i+1}</span></td>
+    <td class="td-name" title="${r.op}" style="max-width:190px">${r.op}</td>
+    <td class="td-money">${fmtM(r.valor)}</td>
+    <td class="td-proy">${fmtM(r.monto)}</td>
+    <td class="td-rev26">${r.rev26>0?fmtM(r.rev26):'<span style="color:var(--muted)">—</span>'}</td>
+    <td>${r.status==='won'?probBar(100):probBar(r.prob)}</td>
+    <td style="font-size:11px;color:${execColor(r.ejecutivo)};font-weight:600">${execShort(r.ejecutivo)}</td>
+    <td>${phaseBadge(r.fase)}</td><td>${fechaChip(r.fecha)}</td></tr>`).join('');
+  const t20v=all.reduce((a,b)=>a+b.valor,0),t20m=all.reduce((a,b)=>a+b.monto,0),t20r=all.reduce((a,b)=>a+b.rev26,0);
+  document.getElementById('top20-tfoot').innerHTML=`<tr>
+    <td class="tf-label" colspan="2">TOTAL TOP 20</td>
+    <td class="tf-money">${fmtM(t20v)}</td><td class="tf-proy">${fmtM(t20m)}</td>
+    <td class="tf-rev26">${fmtM(t20r)}</td><td colspan="4"></td></tr>`;
+}
+
+/* ─── EXEC GRID ─── */
+function renderExecGrid() {
+  const tot=ACTIVE.reduce((a,b)=>a+b.valor,0)||1;
+  document.getElementById('exec-grid').innerHTML=TEAM.map(e=>{
+    const ops=ACTIVE.filter(r=>r.ejecutivo===e.name);
+    const pip=ops.reduce((a,b)=>a+b.valor,0);
+    const proy=ops.reduce((a,b)=>a+b.monto,0);
+    const rev26=ops.reduce((a,b)=>a+b.rev26,0);
+    const won=WON.filter(r=>r.ejecutivo===e.name);
+    const pct=Math.round(pip/tot*100);
+    return `<div class="exec-card ${e.cls}">
+      <div class="exec-name">${e.name}</div><div class="exec-role">${e.role}</div>
+      <div class="exec-stats">
+        <div><div class="e-lbl">Pipeline</div><div class="e-val">${fmtM(pip)}</div><div class="e-sub">${ops.length} ops</div></div>
+        <div><div class="e-lbl">Proyectado</div><div class="e-val" style="color:${e.color}">${fmtM(proy)}</div></div>
+        <div><div class="e-lbl" style="color:var(--gold)">⭐Rev FY26</div><div class="e-val" style="color:var(--gold)">${fmtM(rev26)}</div></div>
+        <div><div class="e-lbl" style="color:var(--green)">Won</div><div class="e-val" style="color:var(--green)">${fmtM(won.reduce((a,b)=>a+b.valor,0))}</div><div class="e-sub">${won.length} deals</div></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);display:flex;justify-content:space-between;margin-top:8px"><span>Participación pipeline</span><span>${pct}%</span></div>
+      <div class="exec-prog-bar"><div class="exec-prog-fill" style="width:${pct}%;background:${e.color}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function buildExecFilterBtns() {
+  document.getElementById('exec-filter-btns').innerHTML =
+    `<button class="sort-btn active" onclick="filterExec('all',this)">Todos</button>`+
+    TEAM.map(e=>`<button class="sort-btn" onclick="filterExec('${e.name}',this)">${e.name}</button>`).join('');
+}
+function filterExec(name,btn) {
+  execFilter=name;
+  document.querySelectorAll('#exec-filter-btns .sort-btn').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderExecTable();
+}
+function renderExecTable() {
+  const data=execFilter==='all'?ACTIVE:ACTIVE.filter(r=>r.ejecutivo===execFilter);
+  const exData=[...data].sort((a,b)=>b.monto-a.monto);
+  document.getElementById('exec-table-body').innerHTML=exData.map(r=>`
+    <tr><td class="td-name" title="${r.op}">${r.op}</td>
+    <td style="font-size:11px;color:${execColor(r.ejecutivo)};font-weight:600">${r.ejecutivo}</td>
+    <td class="td-money">${fmtM(r.valor)}</td><td class="td-proy">${fmtM(r.monto)}</td>
+    <td class="td-rev26">${r.rev26>0?fmtM(r.rev26):'<span style="color:var(--muted)">—</span>'}</td>
+    <td>${probBar(r.prob)}</td><td>${phaseBadge(r.fase)}</td><td>${fechaChip(r.fecha)}</td></tr>`).join('')
+    ||'<tr><td colspan="8" class="no-data">Sin oportunidades</td></tr>';
+  const exV=data.reduce((a,b)=>a+b.valor,0),exM=data.reduce((a,b)=>a+b.monto,0),exR=data.reduce((a,b)=>a+b.rev26,0);
+  document.getElementById('exec-tfoot').innerHTML=`<tr>
+    <td class="tf-label" colspan="2">TOTAL (${data.length} ops)</td>
+    <td class="tf-money">${fmtM(exV)}</td><td class="tf-proy">${fmtM(exM)}</td>
+    <td class="tf-rev26">${fmtM(exR)}</td><td colspan="3"></td></tr>`;
+}
+
+/* ─── FULL ─── */
+function buildExecSelect() {
+  const sel=document.getElementById('exec-sel4');
+  sel.innerHTML='<option value="">Todos los ejecutivos</option>'+TEAM.map(e=>`<option>${e.name}</option>`).join('');
+}
+function sortFull(key) {
+  fullSort.dir = fullSort.key===key ? fullSort.dir*-1 : -1;
+  fullSort.key=key; renderFull();
+}
+function renderFull() {
+  const s=(document.getElementById('search-inp').value||'').toLowerCase();
+  const fase=document.getElementById('fase-sel').value;
+  const exec=document.getElementById('exec-sel4').value;
+  let data=[...ACTIVE];
+  if (s)    data=data.filter(r=>r.op.toLowerCase().includes(s)||(r.ejecutivo||'').toLowerCase().includes(s));
+  if (fase) data=data.filter(r=>r.fase===fase);
+  if (exec) data=data.filter(r=>r.ejecutivo===exec);
+  const kf={op:r=>r.op,ejecutivo:r=>r.ejecutivo,valor:r=>r.valor,monto:r=>r.monto,rev26:r=>r.rev26,prob:r=>r.prob,fase:r=>r.fase,fecha:r=>r.fecha||'9999'};
+  data.sort((a,b)=>{const va=kf[fullSort.key]?.(a)??'',vb=kf[fullSort.key]?.(b)??'';return va<vb?fullSort.dir:va>vb?-fullSort.dir:0;});
+  document.getElementById('full-body').innerHTML=data.map(r=>`
+    <tr><td class="td-name" title="${r.op}">${r.op}</td>
+    <td style="font-size:11px;color:${execColor(r.ejecutivo)};font-weight:600">${r.ejecutivo}</td>
+    <td class="td-money">${fmtM(r.valor)}</td><td class="td-proy">${fmtM(r.monto)}</td>
+    <td class="td-rev26">${r.rev26>0?fmtM(r.rev26):'<span style="color:var(--muted)">—</span>'}</td>
+    <td>${probBar(r.prob)}</td><td>${phaseBadge(r.fase)}</td><td>${fechaChip(r.fecha)}</td>
+    <td>${sectorChip(r.sector)}</td><td style="font-size:10px;color:var(--muted)">${r.uen||''}</td></tr>`).join('')
+    ||'<tr><td colspan="10" class="no-data">Sin resultados</td></tr>';
+  const fV=data.reduce((a,b)=>a+b.valor,0),fM=data.reduce((a,b)=>a+b.monto,0),fR=data.reduce((a,b)=>a+b.rev26,0);
+  document.getElementById('full-tfoot').innerHTML=`<tr>
+    <td class="tf-label" colspan="2">TOTAL FILTRADO (${data.length} ops)</td>
+    <td class="tf-money">${fmtM(fV)}</td><td class="tf-proy">${fmtM(fM)}</td>
+    <td class="tf-rev26">${fmtM(fR)}</td><td colspan="5"></td></tr>`;
+  document.getElementById('full-count').textContent=`Mostrando ${data.length} de ${ACTIVE.length} oportunidades activas`;
+}
+
+/* ─── CERRADAS ─── */
+function renderClosed() {
+  const wv=WON.reduce((a,b)=>a+b.valor,0), lv=LOST.reduce((a,b)=>a+b.valor,0);
+  document.getElementById('kpi-won-val').textContent=fmtM(wv);
+  document.getElementById('kpi-won-cnt').textContent=`${WON.length} oportunidades exitosas`;
+  document.getElementById('kpi-lost-val').textContent=fmtM(lv);
+  document.getElementById('kpi-lost-cnt').textContent=`${LOST.length} no concretadas`;
+  const row=(arr,clr,tfId)=>{
+    const html=arr.sort((a,b)=>b.valor-a.valor).map(r=>`
+      <tr><td class="td-name" title="${r.op}">${r.op}</td>
+      <td class="td-money" style="color:${clr}">${fmtM(r.valor)}</td>
+      <td style="font-size:11px;color:${execColor(r.ejecutivo)};font-weight:600">${r.ejecutivo}</td>
+      <td>${fechaChip(r.fecha)}</td><td>${sectorChip(r.sector)}</td></tr>`).join('')
+      ||'<tr><td colspan="5" class="no-data">Sin registros</td></tr>';
+    const total=arr.reduce((a,b)=>a+b.valor,0);
+    document.getElementById(tfId).innerHTML=arr.length?`<tr>
+      <td class="tf-label">TOTAL (${arr.length})</td>
+      <td class="tf-money" style="color:${clr}">${fmtM(total)}</td>
+      <td colspan="3"></td></tr>`:'';
+    return html;
+  };
+  document.getElementById('won-body').innerHTML=row(WON,'var(--green)','won-tfoot');
+  document.getElementById('lost-body').innerHTML=row(LOST,'var(--red)','lost-tfoot');
+}
+
+/* ─── NUEVO ESTE MES ─── */
+function renderNuevoMes() {
+  const cutoff = new Date(Date.now() - 30*24*60*60*1000);
+  const recientes = ALL_NEW.filter(r => {
+    if (!r.creacion) return false;
+    const d = new Date(r.creacion);
+    return !isNaN(d) && d >= cutoff;
+  }).sort((a,b) => new Date(b.creacion)-new Date(a.creacion));
+
+  const totalVal = recientes.reduce((a,b)=>a+b.valor,0);
+  const totalRev = recientes.reduce((a,b)=>a+b.rev26,0);
+  const byExec   = TEAM.map(e=>recientes.filter(r=>r.ejecutivo===e.name).length);
+
+  document.getElementById('nm-kpis').innerHTML = `
+    <div class="kpi-card cyan"><div class="kpi-lbl">Nuevas este mes</div><div class="kpi-val">${recientes.length}</div><div class="kpi-sub">Últimos 30 días</div></div>
+    <div class="kpi-card blue"><div class="kpi-lbl">Valor Total</div><div class="kpi-val">${fmtM(totalVal)}</div><div class="kpi-sub">Pipeline nuevo</div></div>
+    <div class="kpi-card gold" style="border-top-color:var(--gold)"><div class="kpi-lbl">Rev FY2026</div><div class="kpi-val" style="color:var(--gold)">${fmtM(totalRev)}</div><div class="kpi-sub">De nuevas ops</div></div>
+    <div class="kpi-card amber"><div class="kpi-lbl">Por Ejecutivo</div><div class="kpi-val">${TEAM.map((e,i)=>`<span style="font-size:14px;color:${e.color}">${byExec[i]}</span>`).join(' / ')}</div><div class="kpi-sub">${TEAM.map(e=>execShort(e.name)).join(' / ')}</div></div>
+  `;
+
+  document.getElementById('nuevo-mes-body').innerHTML = recientes.map(r=>`
+    <tr class="var-new-row">
+    <td style="width:280px;min-width:280px;word-break:break-word;white-space:normal;font-weight:500;font-size:12px;padding:10px 14px;vertical-align:middle">${r.op} <span class="new-badge">NUEVO</span></td>
+    <td style="font-size:11px;color:var(--muted);white-space:nowrap">${fmtDateTime(r.creacion)}</td>
+    <td style="font-size:11px;color:${execColor(r.ejecutivo)};font-weight:600">${r.ejecutivo}</td>
+    <td class="td-money">${fmtM(r.valor)}</td><td class="td-proy">${fmtM(r.monto)}</td>
+    <td class="td-rev26">${r.rev26>0?fmtM(r.rev26):'<span style="color:var(--muted)">—</span>'}</td>
+    <td>${probBar(r.prob)}</td><td>${phaseBadge(r.fase)}</td>
+    <td>${fechaChip(r.fecha)}</td><td>${sectorChip(r.sector)}</td></tr>`).join('')
+    ||'<tr><td colspan="10" class="no-data">No hay oportunidades creadas en los últimos 30 días</td></tr>';
+  const nmV=recientes.reduce((a,b)=>a+b.valor,0),nmM=recientes.reduce((a,b)=>a+b.monto,0),nmR=recientes.reduce((a,b)=>a+b.rev26,0);
+  document.getElementById('nm-tfoot').innerHTML=`<tr>
+    <td class="tf-label" colspan="3">TOTAL NUEVO MES (${recientes.length} ops)</td>
+    <td class="tf-money">${fmtM(nmV)}</td><td class="tf-proy">${fmtM(nmM)}</td>
+    <td class="tf-rev26">${fmtM(nmR)}</td><td colspan="4"></td></tr>`;
+
+  document.getElementById('nm-count').textContent = `${recientes.length} oportunidades creadas en los últimos 30 días`;
+}
+
+/* ─── VARIANZA SEMANAL ─── */
+function renderVarianza() {
+  const el = document.getElementById('varianza-content');
+
+  if (!HAS_PREV) {
+    el.innerHTML = `<div class="no-prev-msg">
+      <div class="icon">📁</div>
+      <h3>Sube el CSV de la semana anterior</h3>
+      <p>Para ver la varianza semanal, regresa a la pantalla de carga<br>
+      y agrega también el archivo CSV de la semana pasada.<br><br>
+      <button class="btn-reload" style="margin-top:12px" onclick="resetPortal()">⬆ Cargar ambos archivos</button></p>
+    </div>`;
+    return;
+  }
+
+  // Calcular varianzas
+  const curKeys  = new Set(ACTIVE.map(r=>r.op));
+  const prevKeys = new Set(PREV_ACTIVE.map(r=>r.op));
+  const prevIdx  = {};
+  PREV_ACTIVE.forEach(r=>{ prevIdx[r.op]=r; });
+
+  const newOps      = ACTIVE.filter(r=>!prevKeys.has(r.op));
+  const droppedOps  = PREV_ACTIVE.filter(r=>!curKeys.has(r.op));
+  const changedOps  = ACTIVE.filter(r=>{
+    if (!prevIdx[r.op]) return false;
+    const p=prevIdx[r.op];
+    return Math.abs(r.valor-p.valor)>0||Math.abs(r.monto-p.monto)>0||Math.abs(r.prob-p.prob)>0||r.fase!==p.fase;
+  }).map(r=>({...r,prev:prevIdx[r.op]}));
+
+  // KPIs de varianza
+  const curPipe  = ACTIVE.reduce((a,b)=>a+b.valor,0);
+  const prevPipe = PREV_ACTIVE.reduce((a,b)=>a+b.valor,0);
+  const curProy  = ACTIVE.reduce((a,b)=>a+b.monto,0);
+  const prevProy = PREV_ACTIVE.reduce((a,b)=>a+b.monto,0);
+  const curRev   = ACTIVE.reduce((a,b)=>a+b.rev26,0);
+  const prevRev  = PREV_ACTIVE.reduce((a,b)=>a+b.rev26,0);
+
+  el.innerHTML = `
+    <div class="var-kpi-row">
+      <div class="kpi-card blue"><div class="kpi-lbl">Pipeline: Δ Semana</div>
+        <div class="kpi-val" style="font-size:22px">${deltaBadge(curPipe-prevPipe)}</div>
+        <div class="kpi-sub">${fmtM(prevPipe)} → ${fmtM(curPipe)}</div></div>
+      <div class="kpi-card cyan"><div class="kpi-lbl">Proyectado: Δ Semana</div>
+        <div class="kpi-val" style="font-size:22px">${deltaBadge(curProy-prevProy)}</div>
+        <div class="kpi-sub">${fmtM(prevProy)} → ${fmtM(curProy)}</div></div>
+      <div class="kpi-card gold" style="border-top-color:var(--gold)"><div class="kpi-lbl">Rev FY2026: Δ Semana</div>
+        <div class="kpi-val" style="font-size:22px">${deltaBadge(curRev-prevRev)}</div>
+        <div class="kpi-sub">${fmtM(prevRev)} → ${fmtM(curRev)}</div></div>
+      <div class="kpi-card amber"><div class="kpi-lbl">Ops Activas: Δ</div>
+        <div class="kpi-val">${deltaBadge(ACTIVE.length-PREV_ACTIVE.length)}</div>
+        <div class="kpi-sub">${PREV_ACTIVE.length} → ${ACTIVE.length}</div></div>
+    </div>
+
+    ${newOps.length>0?`
+    <div class="var-section">✅ Oportunidades Nuevas esta Semana (${newOps.length})</div>
+    <div class="table-card" style="margin-bottom:18px">
+      <div class="tbl-scroll"><table><thead><tr>
+        <th>Oportunidad</th><th>Ejecutivo</th><th>Valor Contrato</th>
+        <th>Mto. Proyectado</th><th style="color:var(--gold)">⭐Rev FY2026</th><th>Prob.</th><th>Fase</th><th>Cierre Est.</th>
+      </tr></thead><tbody>${newOps.sort((a,b)=>b.valor-a.valor).map(r=>`
+        <tr class="var-new-row">
+        <td class="td-name" title="${r.op}">${r.op} <span class="new-badge">NUEVO</span></td>
+        <td style="font-size:11px;color:${execColor(r.ejecutivo)};font-weight:600">${r.ejecutivo}</td>
+        <td class="td-money">${fmtM(r.valor)}</td><td class="td-proy">${fmtM(r.monto)}</td>
+        <td class="td-rev26">${r.rev26>0?fmtM(r.rev26):'<span style="color:var(--muted)">—</span>'}</td>
+        <td>${probBar(r.prob)}</td><td>${phaseBadge(r.fase)}</td><td>${fechaChip(r.fecha)}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div>`:''}
+
+    ${changedOps.length>0?`
+    <div class="var-section">🔄 Oportunidades con Cambios esta Semana (${changedOps.length})</div>
+    <div class="table-card" style="margin-bottom:18px">
+      <div class="tbl-scroll"><table><thead><tr>
+        <th>Oportunidad</th><th>Ejecutivo</th>
+        <th>Δ Valor</th><th>Δ Proyectado</th><th>Δ Rev FY2026</th><th>Δ Prob.</th><th>Cambio de Fase</th>
+      </tr></thead><tbody>${changedOps.sort((a,b)=>Math.abs(b.monto-b.prev.monto)-Math.abs(a.monto-a.prev.monto)).map(r=>`
+        <tr class="var-changed-row">
+        <td class="td-name" title="${r.op}">${r.op}</td>
+        <td style="font-size:11px;color:${execColor(r.ejecutivo)};font-weight:600">${r.ejecutivo}</td>
+        <td>${deltaBadge(r.valor-r.prev.valor)}</td>
+        <td>${deltaBadge(r.monto-r.prev.monto)}</td>
+        <td>${deltaBadge(r.rev26-r.prev.rev26)}</td>
+        <td>${deltaPct(r.prob-r.prev.prob)}</td>
+        <td>${faseArrow(r.prev.fase,r.fase)}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div>`:''}
+
+    ${droppedOps.length>0?`
+    <div class="var-section">⚠️ Oportunidades que Salieron del Pipeline (${droppedOps.length})</div>
+    <div class="table-card">
+      <div class="tbl-scroll"><table><thead><tr>
+        <th>Oportunidad</th><th>Ejecutivo</th><th>Valor</th><th>Proyectado</th><th>Fase Anterior</th>
+      </tr></thead><tbody>${droppedOps.sort((a,b)=>b.valor-a.valor).map(r=>`
+        <tr><td class="td-name" title="${r.op}">${r.op}</td>
+        <td style="font-size:11px;color:${execColor(r.ejecutivo)};font-weight:600">${r.ejecutivo}</td>
+        <td class="td-money">${fmtM(r.valor)}</td><td class="td-proy">${fmtM(r.monto)}</td>
+        <td>${phaseBadge(r.fase)}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div>`:''}
+
+    ${newOps.length===0&&changedOps.length===0&&droppedOps.length===0?
+      `<div class="no-data" style="padding:60px">Sin cambios detectados entre los dos archivos cargados.</div>`:''}
+  `;
+}
+
+/* ══════════════════════════════════════════════════
+   NAVEGACIÓN
+══════════════════════════════════════════════════ */
+function showTab(idx) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  document.querySelectorAll('.tab-panel').forEach((p,i)=>p.classList.toggle('active',i===idx));
+}
+
+/* ══════════════════════════════════════════════════
+   RESET
+══════════════════════════════════════════════════ */
+function resetPortal() {
+  rawCurrent=null; rawPrev=null;
+  ACTIVE=[]; WON=[]; LOST=[]; ALL_NEW=[]; PREV_ACTIVE=[]; PREV_WON=[]; PREV_LOST=[]; HAS_PREV=false;
+  Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});
+  charts={};
+  document.getElementById('fi-current').value='';
+  document.getElementById('fi-prev').value='';
+  document.getElementById('dz-current').classList.remove('loaded','drag-over');
+  document.getElementById('dz-prev').classList.remove('loaded','drag-over');
+  document.getElementById('loaded-current').style.display='none';
+  document.getElementById('loaded-prev').style.display='none';
+  document.getElementById('go-btn').classList.remove('ready');
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('upload-screen').style.display='flex';
+}
+
+function setLoading(show, msg) {
+  document.getElementById('loading-screen').style.display = show?'flex':'none';
+  document.getElementById('upload-screen').style.display  = show?'none':'flex';
+  if (msg) document.getElementById('loading-msg').textContent=msg;
+}
+</script>
+</body>
+</html>
